@@ -5,89 +5,88 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  GODOT_VERSION: "3.6"
-  EXPORT_NAME: "Gone"
-  HOME: /root
-
 jobs:
   build:
     name: Build Gone APK
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:3.6
-      options: --user root
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up template directory
+      - name: Locate Godot templates and set up paths
         run: |
-          export TEMPLATES_DIR="/root/.local/share/godot/templates/${GODOT_VERSION}.stable"
-          mkdir -p "$TEMPLATES_DIR"
-          mkdir -p /root/.config/godot
+          echo "=== Locating Godot and templates ==="
+          which godot3 || which godot || echo "godot not in PATH"
+          find / -name "android_debug.apk" 2>/dev/null | head -5
+          find / -name "*.tpz" 2>/dev/null | head -5
+          find /root -maxdepth 5 2>/dev/null | head -40 || true
+          find /usr/local -maxdepth 5 2>/dev/null | head -40 || true
+          echo "HOME=$HOME"
+          echo "=== Android SDK ==="
+          find / -name "adb" 2>/dev/null | head -5
+          find / -name "sdkmanager" 2>/dev/null | head -5
 
-          # The barichello/godot-ci image ships templates at /root/templates/
-          # Copy them to where Godot expects them
-          if [ -d "/root/templates" ]; then
-            echo "Found bundled templates at /root/templates"
-            cp /root/templates/*.apk "$TEMPLATES_DIR/" 2>/dev/null || true
-            cp /root/templates/*.zip "$TEMPLATES_DIR/" 2>/dev/null || true
-            ls -la /root/templates/ | head -20
-            echo "Copied to: $TEMPLATES_DIR"
-            ls -la "$TEMPLATES_DIR" | head -20
+      - name: Setup export templates
+        run: |
+          GODOT_VERSION="3.6"
+          # Find the real home used by the container
+          ACTUAL_HOME=$(eval echo ~)
+          echo "Actual home: $ACTUAL_HOME"
+          TEMPLATE_DIR="$ACTUAL_HOME/.local/share/godot/templates/${GODOT_VERSION}.stable"
+          mkdir -p "$TEMPLATE_DIR"
+
+          # Check if templates already exist in container
+          FOUND=$(find / -name "android_debug.apk" 2>/dev/null | head -1)
+          if [ -n "$FOUND" ]; then
+            echo "Templates found at: $FOUND"
+            TEMPLATE_SRC=$(dirname "$FOUND")
+            cp "$TEMPLATE_SRC/"*.apk "$TEMPLATE_DIR/" 2>/dev/null || true
+            cp "$TEMPLATE_SRC/"*.zip "$TEMPLATE_DIR/" 2>/dev/null || true
+            ls "$TEMPLATE_DIR"
           else
-            echo "No bundled templates — downloading from GitHub releases..."
-            wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
-              -O /tmp/templates.tpz
-            unzip -q /tmp/templates.tpz -d /tmp/tpl_extracted
-            cp /tmp/tpl_extracted/templates/* "$TEMPLATES_DIR/"
-            echo "Downloaded templates installed."
+            echo "Downloading templates..."
+            wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -O /tmp/tpl.tpz
+            unzip -q /tmp/tpl.tpz -d /tmp/tpl_out
+            cp /tmp/tpl_out/templates/* "$TEMPLATE_DIR/"
+            ls "$TEMPLATE_DIR"
           fi
 
-          ls -la "$TEMPLATES_DIR"
-
-      - name: Generate debug keystore
+      - name: Setup editor settings
         run: |
+          ACTUAL_HOME=$(eval echo ~)
+          mkdir -p "$ACTUAL_HOME/.config/godot"
+
+          # Find Android SDK
+          ANDROID_SDK=$(find / -type d -name "platform-tools" 2>/dev/null | head -1 | xargs dirname)
+          echo "Android SDK: $ANDROID_SDK"
+
+          # Generate debug keystore
           keytool -genkeypair -v \
-            -keystore /root/debug.keystore \
+            -keystore /tmp/debug.keystore \
             -storepass android \
             -alias androiddebugkey \
             -keypass android \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
-          echo "Keystore created at /root/debug.keystore"
 
-      - name: Write Godot editor settings
-        run: |
-          ANDROID_SDK_PATH="/usr/lib/android-sdk"
-          # Try to locate the Android SDK bundled in the container
-          for candidate in /usr/lib/android-sdk /opt/android-sdk /root/android-sdk; do
-            if [ -d "$candidate" ]; then
-              ANDROID_SDK_PATH="$candidate"
-              break
-            fi
-          done
-          echo "Using Android SDK: $ANDROID_SDK_PATH"
-
-          cat > /root/.config/godot/editor_settings-3.tres << EOF
+          cat > "$ACTUAL_HOME/.config/godot/editor_settings-3.tres" << SETTINGS
 [gd_resource type="EditorSettings" format=2]
 
 [resource]
-export/android/android_sdk_path = "$ANDROID_SDK_PATH"
-export/android/debug_keystore = "/root/debug.keystore"
+export/android/android_sdk_path = "$ANDROID_SDK"
+export/android/debug_keystore = "/tmp/debug.keystore"
 export/android/debug_keystore_user = "androiddebugkey"
 export/android/debug_keystore_pass = "android"
-export/android/adb = "$ANDROID_SDK_PATH/platform-tools/adb"
-export/android/jarsigner = "/usr/bin/jarsigner"
-EOF
-          cat /root/.config/godot/editor_settings-3.tres
+SETTINGS
+          echo "Editor settings written to $ACTUAL_HOME/.config/godot/editor_settings-3.tres"
+          cat "$ACTUAL_HOME/.config/godot/editor_settings-3.tres"
 
       - name: Write export presets
         run: |
-          cat > export_presets.cfg << 'EOF'
+          cat > export_presets.cfg << 'PRESETS'
 [preset.0]
 
 name="Android"
@@ -106,12 +105,9 @@ script_encryption_key=""
 custom_template/debug=""
 custom_template/release=""
 custom_template/use_custom_build=false
-custom_template/export_format=0
 architectures/armeabi-v7a=true
 architectures/arm64-v8a=true
-architectures/x86=false
-architectures/x86_64=false
-keystore/debug="/root/debug.keystore"
+keystore/debug="/tmp/debug.keystore"
 keystore/debug_user="androiddebugkey"
 keystore/debug_password="android"
 keystore/release=""
@@ -129,51 +125,39 @@ screen/support_normal=true
 screen/support_large=true
 screen/support_xlarge=true
 screen/keep_screen_on=true
-EOF
-
-      - name: Create builds dir and verify project
-        run: |
+PRESETS
           mkdir -p builds
-          echo "Project files:"
-          ls -la
-          echo "Scenes:"
-          ls -la scenes/
-          echo "Scripts:"
-          ls -la scripts/
 
       - name: Export APK
         run: |
-          # Run headless export — errors about VisualServer RID are harmless in headless mode
-          godot3 --export "Android" builds/Gone.apk --no-window 2>&1 || \
-          godot --export "Android" builds/Gone.apk --no-window 2>&1
-          echo "Export finished with exit code: $?"
+          set +e
+          GODOT_BIN=$(which godot3 2>/dev/null || which godot 2>/dev/null)
+          echo "Using Godot binary: $GODOT_BIN"
+          $GODOT_BIN --export "Android" builds/Gone.apk --no-window 2>&1
+          EXIT=$?
+          echo "Godot exit code: $EXIT"
+          set -e
 
-      - name: Verify and report APK
+      - name: Check APK
         run: |
           if [ -f builds/Gone.apk ]; then
-            echo "✅ APK built successfully!"
+            echo "SUCCESS: APK built!"
             ls -lh builds/Gone.apk
           else
-            echo "❌ APK not found. Directory contents:"
-            ls -la builds/ || echo "builds/ is empty"
-            echo "Template dir contents:"
-            ls -la "/root/.local/share/godot/templates/${GODOT_VERSION}.stable/" || true
+            echo "FAILED: APK missing. builds/ contents:"
+            ls -la builds/ 2>/dev/null || echo "empty"
+            # Show template dir for debugging
+            ACTUAL_HOME=$(eval echo ~)
+            echo "Template dir:"
+            ls -la "$ACTUAL_HOME/.local/share/godot/templates/" 2>/dev/null || true
+            ls -la "$ACTUAL_HOME/.local/share/godot/templates/3.6.stable/" 2>/dev/null || true
             exit 1
           fi
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Upload APK artifact
         if: success()
+        uses: actions/upload-artifact@v4
         with:
           name: gone-apk-${{ github.run_number }}
           path: builds/Gone.apk
           retention-days: 30
-
-      - name: Upload APK (even on failure for debugging)
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: gone-debug-logs-${{ github.run_number }}
-          path: |
-            builds/
-          retention-days: 7
