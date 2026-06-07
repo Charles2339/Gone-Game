@@ -65,7 +65,7 @@ jobs:
           GODOT=$(command -v godot3 2>/dev/null || command -v godot 2>/dev/null)
           echo "Godot binary: $GODOT"
           # Godot headless always exits 1 even on success - APK validity is checked in Verify step
-          "$GODOT" --path "$(pwd)" --no-window --export "Android" "$(pwd)/builds/Gone.apk" || true
+          "$GODOT" --path "$(pwd)" --no-window --export-debug "Android" "$(pwd)/builds/Gone.apk" || true
 
       - name: Verify APK
         shell: bash
