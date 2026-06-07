@@ -26,7 +26,7 @@ var dead         : bool   = false
 var game_speed   : float  = 480.0
 
 var dj_flash     : float  = 0.0
-var land_squash  : float  = 0.0   # 0..LAND_SQUASH_DUR → squash on landing
+var land_squash  : float  = 0.0
 var was_on_floor : bool   = false
 
 var rag_pieces   : Array  = []
@@ -179,26 +179,22 @@ func _spawn_ragdoll():
 	var bvx  = -90.0  - randf() * 60.0
 	var bvy  = -280.0 - randf() * 130.0
 
-	# Head
 	rag_pieces.append({
 		"type": "c", "pos": Vector2(3, -82), "r": 13.0, "col": neon.duplicate(),
 		"vel": Vector2(bvx + randf()*50-25, bvy - 110 - randf()*90),
 		"rot": 0.0, "rv": randf()*8-4.0
 	})
-	# Torso
 	rag_pieces.append({
 		"type": "l", "pos": Vector2(0, -54), "len": 30.0, "col": neon.duplicate(),
 		"vel": Vector2(bvx, bvy + randf()*40),
 		"rot": 0.2, "rv": randf()*5-2.5
 	})
-	# Arms
 	for sx in [1, -1]:
 		rag_pieces.append({
 			"type": "l", "pos": Vector2(sx*8, -66), "len": 22.0, "col": neon.duplicate(),
 			"vel": Vector2(bvx + sx * 200 + randf()*60, bvy - randf()*90),
 			"rot": float(sx) * 1.4, "rv": float(sx) * (randf()*12+6)
 		})
-	# Legs
 	for sx in [1, -1]:
 		rag_pieces.append({
 			"type": "l", "pos": Vector2(sx*6, -20), "len": 26.0, "col": red.duplicate(),
@@ -209,7 +205,7 @@ func _spawn_ragdoll():
 func _update_ragdoll(delta):
 	for p in rag_pieces:
 		p["vel"].y += RAG_GRAVITY * delta
-		p["vel"].x *= (1.0 - delta * 1.2)  # slight air drag on x
+		p["vel"].x *= (1.0 - delta * 1.2)
 		p["pos"]   += p["vel"] * delta
 		p["rot"]   += p["rv"] * delta
 		p["rv"]    *= 1.0 - delta * 2.2
@@ -225,30 +221,27 @@ func _draw():
 	var is_slide = (state == State.SLIDE)
 	var h = SLIDE_H if is_slide else STAND_H
 
-	# Landing squash/stretch scale
-	var sq_t   = 1.0 - clamp(land_squash / LAND_SQUASH_DUR, 0.0, 1.0)
-	var sq_y   = 1.0 - 0.22 * sin(sq_t * PI)
-	var sq_x   = 1.0 + 0.18 * sin(sq_t * PI)
+	# Squash factor applied directly to y-coordinates (no draw_set_transform)
+	var sq_t  = 1.0 - clamp(land_squash / LAND_SQUASH_DUR, 0.0, 1.0)
+	var sq_sy = 1.0 - 0.22 * sin(sq_t * PI)   # vertical scale (< 1 = squash)
+	var sq_sx = 1.0 + 0.18 * sin(sq_t * PI)   # horizontal scale (> 1 = squash)
 
 	if dj_flash > 0.0:
 		var fa     = dj_flash / 0.22
 		var ring_r = 36.0 * (1.3 - fa * 0.5)
 		draw_circle(Vector2(0, -h * 0.5), ring_r, Color(0.5, 0.9, 1.0, fa * 0.40))
 		draw_arc(Vector2(0, -h * 0.5), ring_r, 0, TAU, 28, Color(0.6, 1.0, 1.0, fa * 0.85), 2.0)
-		# Particles
 		for i in range(6):
 			var angle = dj_flash * 18.0 + i * TAU / 6.0
 			var pr    = ring_r * (1.1 + fa * 0.3)
-			var pp    = Vector2(cos(angle)*pr, sin(angle)*pr) + Vector2(0, -h*0.5)
+			var pp    = Vector2(cos(angle)*pr, -h*0.5 + sin(angle)*pr)
 			draw_circle(pp, 2.5, Color(0.7, 1.0, 1.0, fa * 0.7))
 
 	var glow_c = Color(0.18, 0.52, 1.0, 0.18)
 	var neon_c = Color(0.42, 0.82, 1.0, 1.0)
 
-	draw_set_transform(Vector2(0, 0), 0.0, Vector2(sq_x, sq_y))
-	_draw_stickman(h, glow_c, 9.0)
-	_draw_stickman(h, neon_c, 2.8)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_stickman(h, glow_c, 9.0, sq_sx, sq_sy)
+	_draw_stickman(h, neon_c, 2.8, sq_sx, sq_sy)
 
 func _draw_ragdoll():
 	for p in rag_pieces:
@@ -262,19 +255,23 @@ func _draw_ragdoll():
 			draw_line(p["pos"] - d, p["pos"] + d, gc,       8.0)
 			draw_line(p["pos"] - d, p["pos"] + d, p["col"], 2.8)
 
-func _draw_stickman(h: float, col: Color, lw: float):
-	if state == State.SLIDE:
-		_pose_slide(h, col, lw)
-	elif state == State.JUMP:
-		_pose_jump(h, col, lw, false)
-	elif state == State.DOUBLE_JUMP:
-		_pose_jump(h, col, lw, true)
-	elif state == State.CLIMB:
-		_pose_climb(h, col, lw)
-	else:
-		_pose_run(h, col, lw)
+# sq_sx / sq_sy scale individual draw coords without relying on draw_set_transform
+func _sq(v: Vector2, sx: float, sy: float) -> Vector2:
+	return Vector2(v.x * sx, v.y * sy)
 
-func _pose_run(h: float, col: Color, lw: float):
+func _draw_stickman(h: float, col: Color, lw: float, sx: float, sy: float):
+	if state == State.SLIDE:
+		_pose_slide(h, col, lw, sx, sy)
+	elif state == State.JUMP:
+		_pose_jump(h, col, lw, false, sx, sy)
+	elif state == State.DOUBLE_JUMP:
+		_pose_jump(h, col, lw, true, sx, sy)
+	elif state == State.CLIMB:
+		_pose_climb(h, col, lw, sx, sy)
+	else:
+		_pose_run(h, col, lw, sx, sy)
+
+func _pose_run(h: float, col: Color, lw: float, sx: float, sy: float):
 	var hr  = h * 0.145
 	var tl  = h * 0.32
 	var ll  = h * 0.30
@@ -284,43 +281,34 @@ func _pose_run(h: float, col: Color, lw: float):
 	var phase = anim_t / RUN_CYCLE * TAU
 	var s     = sin(phase)
 	var s2    = sin(phase + PI)
-	# Up-down torso bob
 	var bob   = sin(phase * 2.0) * 3.5
-	# Forward lean based on speed
 	var lean  = clamp((game_speed - 480.0) / 380.0, 0.0, 1.0) * 6.0
 
 	var hcy = -h + hr + bob * 0.45
-	# Head
-	draw_circle(Vector2(3 + lean, hcy), hr, col)
-	# Eye
-	draw_circle(Vector2(3 + lean + hr * 0.52, hcy - hr * 0.07), 1.8, col)
+	draw_circle(_sq(Vector2(3 + lean, hcy), sx, sy), hr, col)
+	draw_circle(_sq(Vector2(3 + lean + hr * 0.52, hcy - hr * 0.07), sx, sy), 1.8, col)
 
 	var ny = hcy + hr
 	var hy = ny + tl + bob * 0.3
-	# Torso — slight forward lean
-	draw_line(Vector2(0, ny), Vector2(5 + lean, hy), col, lw)
+	draw_line(_sq(Vector2(0, ny), sx, sy), _sq(Vector2(5 + lean, hy), sx, sy), col, lw)
 
-	# Arms with proper swing
-	var sy  = ny + tl * 0.18
+	var sy2 = ny + tl * 0.18
 	var al  = ll * 0.54
 	var asw = s * al * 0.68
-	draw_line(Vector2(2, sy), Vector2(2 + asw,  sy + al * 0.82), col, lw)
-	draw_line(Vector2(2, sy), Vector2(2 - asw,  sy + al * 0.82), col, lw)
+	draw_line(_sq(Vector2(2, sy2), sx, sy), _sq(Vector2(2 + asw, sy2 + al * 0.82), sx, sy), col, lw)
+	draw_line(_sq(Vector2(2, sy2), sx, sy), _sq(Vector2(2 - asw, sy2 + al * 0.82), sx, sy), col, lw)
 
-	# Front leg
 	var fta = s * 0.66
 	var fkx = 5 + sin(fta) * th
 	var fky = hy + cos(fta) * th
 	var fsa = fta - clamp(s, 0.0, 1.0) * 0.55
 	var ffx = fkx + sin(fsa) * sh
 	var ffy = fky + cos(fsa) * sh
-	draw_line(Vector2(5, hy), Vector2(fkx, fky), col, lw)
-	draw_line(Vector2(fkx, fky), Vector2(ffx, ffy), col, lw)
-	# Foot dot for clarity
+	draw_line(_sq(Vector2(5, hy), sx, sy), _sq(Vector2(fkx, fky), sx, sy), col, lw)
+	draw_line(_sq(Vector2(fkx, fky), sx, sy), _sq(Vector2(ffx, ffy), sx, sy), col, lw)
 	if lw < 4.0:
-		draw_circle(Vector2(ffx, ffy), lw * 0.8, col)
+		draw_circle(_sq(Vector2(ffx, ffy), sx, sy), lw * 0.8, col)
 
-	# Back leg
 	var bta = s2 * 0.66
 	var bkx = 5 + sin(bta) * th
 	var bky = hy + cos(bta) * th
@@ -328,98 +316,87 @@ func _pose_run(h: float, col: Color, lw: float):
 	var bfl = abs(s2) * sh * 0.46
 	var bfx = bkx + sin(bsa) * sh
 	var bfy = bky + cos(bsa) * sh - bfl
-	draw_line(Vector2(5, hy), Vector2(bkx, bky), col, lw)
-	draw_line(Vector2(bkx, bky), Vector2(bfx, bfy), col, lw)
+	draw_line(_sq(Vector2(5, hy), sx, sy), _sq(Vector2(bkx, bky), sx, sy), col, lw)
+	draw_line(_sq(Vector2(bkx, bky), sx, sy), _sq(Vector2(bfx, bfy), sx, sy), col, lw)
 
-func _pose_jump(h: float, col: Color, lw: float, dj: bool):
+func _pose_jump(h: float, col: Color, lw: float, dj: bool, sx: float, sy: float):
 	var hr  = h * 0.145
 	var tl  = h * 0.32
 	var ll  = h * 0.30
 	var th  = ll * 0.56
 	var sh  = ll * 0.54
 
-	# Body rises as velocity increases
 	var rise = clamp(-velocity.y / 1200.0, 0.0, 1.0)
-
-	var hcy = -h + hr - rise * 4.0
-	draw_circle(Vector2(2, hcy), hr, col)
-	draw_circle(Vector2(2 + hr * 0.52, hcy - hr * 0.07), 1.8, col)
+	var hcy  = -h + hr - rise * 4.0
+	draw_circle(_sq(Vector2(2, hcy), sx, sy), hr, col)
+	draw_circle(_sq(Vector2(2 + hr * 0.52, hcy - hr * 0.07), sx, sy), 1.8, col)
 
 	var ny = hcy + hr
 	var hy = ny + tl
-	draw_line(Vector2(0, ny), Vector2(-2, hy), col, lw)
+	draw_line(_sq(Vector2(0, ny), sx, sy), _sq(Vector2(-2, hy), sx, sy), col, lw)
 
-	var sy = ny + tl * 0.18
-	var al = ll * 0.54
+	var sy2 = ny + tl * 0.18
+	var al  = ll * 0.54
 	if dj:
 		var spin = anim_t * 16.0
 		var aw   = al * 0.88
-		draw_line(Vector2(0, sy), Vector2( aw * cos(spin), sy - abs(sin(spin)) * aw * 0.55), col, lw)
-		draw_line(Vector2(0, sy), Vector2(-aw * cos(spin), sy - abs(sin(spin)) * aw * 0.55), col, lw)
+		draw_line(_sq(Vector2(0, sy2), sx, sy), _sq(Vector2( aw * cos(spin), sy2 - abs(sin(spin)) * aw * 0.55), sx, sy), col, lw)
+		draw_line(_sq(Vector2(0, sy2), sx, sy), _sq(Vector2(-aw * cos(spin), sy2 - abs(sin(spin)) * aw * 0.55), sx, sy), col, lw)
 	else:
-		# Arms spread wide on ascent, tuck on descent
 		var arm_spread = lerp(0.88, 0.55, clamp(-velocity.y / 800.0, 0.0, 1.0))
-		draw_line(Vector2(0, sy), Vector2(-al * arm_spread, sy - al * 0.10), col, lw)
-		draw_line(Vector2(0, sy), Vector2( al * arm_spread, sy - al * 0.10), col, lw)
+		draw_line(_sq(Vector2(0, sy2), sx, sy), _sq(Vector2(-al * arm_spread, sy2 - al * 0.10), sx, sy), col, lw)
+		draw_line(_sq(Vector2(0, sy2), sx, sy), _sq(Vector2( al * arm_spread, sy2 - al * 0.10), sx, sy), col, lw)
 
-	# Leg tuck — tighter on way up, extends on way down
 	var tuck = lerp(0.50, 0.88, clamp(-velocity.y / 800.0, 0.0, 1.0))
 	var fkx  = -th * sin(tuck)
 	var fky  = hy + th * cos(tuck)
 	var ffx  = fkx + sh * sin(tuck * 0.4)
 	var ffy  = fky + sh * cos(tuck * 0.4)
-	draw_line(Vector2(-2, hy), Vector2(fkx, fky), col, lw)
-	draw_line(Vector2(fkx, fky), Vector2(ffx, ffy), col, lw)
+	draw_line(_sq(Vector2(-2, hy), sx, sy), _sq(Vector2(fkx, fky), sx, sy), col, lw)
+	draw_line(_sq(Vector2(fkx, fky), sx, sy), _sq(Vector2(ffx, ffy), sx, sy), col, lw)
 
 	var bkx = th * sin(tuck * 0.65)
 	var bky = hy + th * cos(tuck * 0.65)
 	var bfx = bkx + sh * 0.06
 	var bfy = bky + sh * 0.58
-	draw_line(Vector2(-2, hy), Vector2(bkx, bky), col, lw)
-	draw_line(Vector2(bkx, bky), Vector2(bfx, bfy), col, lw)
+	draw_line(_sq(Vector2(-2, hy), sx, sy), _sq(Vector2(bkx, bky), sx, sy), col, lw)
+	draw_line(_sq(Vector2(bkx, bky), sx, sy), _sq(Vector2(bfx, bfy), sx, sy), col, lw)
 
-func _pose_slide(h: float, col: Color, lw: float):
+func _pose_slide(h: float, col: Color, lw: float, sx: float, sy: float):
 	var hr = h * 0.145
 	var cy = -h * 0.5
 	var ox = -h * 0.26
-	# Head
-	draw_circle(Vector2(ox, cy), hr, col)
-	draw_circle(Vector2(ox + hr * 0.52, cy - hr * 0.07), 1.8, col)
-	# Torso horizontal
-	draw_line(Vector2(ox + hr, cy), Vector2(h * 0.16, cy), col, lw)
-	# Front leg extended
-	draw_line(Vector2(h * 0.16, cy), Vector2(h * 0.38, cy + h * 0.22), col, lw)
-	draw_line(Vector2(h * 0.38, cy + h * 0.22), Vector2(h * 0.48, cy + h * 0.22), col, lw)
-	# Back leg bent
-	draw_line(Vector2(h * 0.16, cy), Vector2(h * 0.30, cy + h * 0.30), col, lw)
-	draw_line(Vector2(h * 0.30, cy + h * 0.30), Vector2(h * 0.36, cy + h * 0.20), col, lw)
-	# Arms back
-	draw_line(Vector2(-h * 0.06, cy), Vector2(-h * 0.28, cy + h * 0.14), col, lw)
-	draw_line(Vector2(-h * 0.06, cy), Vector2(-h * 0.18, cy - h * 0.13), col, lw)
+	draw_circle(_sq(Vector2(ox, cy), sx, sy), hr, col)
+	draw_circle(_sq(Vector2(ox + hr * 0.52, cy - hr * 0.07), sx, sy), 1.8, col)
+	draw_line(_sq(Vector2(ox + hr, cy), sx, sy), _sq(Vector2(h * 0.16, cy), sx, sy), col, lw)
+	draw_line(_sq(Vector2(h * 0.16, cy), sx, sy), _sq(Vector2(h * 0.38, cy + h * 0.22), sx, sy), col, lw)
+	draw_line(_sq(Vector2(h * 0.38, cy + h * 0.22), sx, sy), _sq(Vector2(h * 0.48, cy + h * 0.22), sx, sy), col, lw)
+	draw_line(_sq(Vector2(h * 0.16, cy), sx, sy), _sq(Vector2(h * 0.30, cy + h * 0.30), sx, sy), col, lw)
+	draw_line(_sq(Vector2(h * 0.30, cy + h * 0.30), sx, sy), _sq(Vector2(h * 0.36, cy + h * 0.20), sx, sy), col, lw)
+	draw_line(_sq(Vector2(-h * 0.06, cy), sx, sy), _sq(Vector2(-h * 0.28, cy + h * 0.14), sx, sy), col, lw)
+	draw_line(_sq(Vector2(-h * 0.06, cy), sx, sy), _sq(Vector2(-h * 0.18, cy - h * 0.13), sx, sy), col, lw)
 
-func _pose_climb(h: float, col: Color, lw: float):
+func _pose_climb(h: float, col: Color, lw: float, sx: float, sy: float):
 	var hr       = h * 0.145
 	var progress = 1.0 - clamp(climb_timer / CLIMB_DURATION, 0.0, 1.0)
 	var lean     = lerp(-10.0, 14.0, progress)
 
 	var hcy = -h + hr
-	draw_circle(Vector2(lean * 0.4, hcy), hr, col)
-	draw_circle(Vector2(lean * 0.4 + hr * 0.52, hcy - hr * 0.07), 1.8, col)
+	draw_circle(_sq(Vector2(lean * 0.4, hcy), sx, sy), hr, col)
+	draw_circle(_sq(Vector2(lean * 0.4 + hr * 0.52, hcy - hr * 0.07), sx, sy), 1.8, col)
 
 	var ny = hcy + hr
 	var hy = ny + h * 0.32
-	draw_line(Vector2(0, ny), Vector2(lean, hy), col, lw)
+	draw_line(_sq(Vector2(0, ny), sx, sy), _sq(Vector2(lean, hy), sx, sy), col, lw)
 
-	var sy = ny + h * 0.10
-	var al = h * 0.28
-	# Arms reach forward toward obstacle
+	var sy2 = ny + h * 0.10
+	var al  = h * 0.28
 	var arm_reach = sin(progress * PI) * 0.35
-	draw_line(Vector2(0, sy), Vector2(al * (0.55 + arm_reach), sy - al * (0.32 + arm_reach) * progress), col, lw)
-	draw_line(Vector2(0, sy), Vector2(al * 0.88, sy - al * 0.65 * progress), col, lw)
+	draw_line(_sq(Vector2(0, sy2), sx, sy), _sq(Vector2(al * (0.55 + arm_reach), sy2 - al * (0.32 + arm_reach) * progress), sx, sy), col, lw)
+	draw_line(_sq(Vector2(0, sy2), sx, sy), _sq(Vector2(al * 0.88, sy2 - al * 0.65 * progress), sx, sy), col, lw)
 
-	# Legs push off
 	var step = sin(progress * PI * 1.5)
-	draw_line(Vector2(lean, hy), Vector2(lean - 14 + step * 4, hy + h * 0.26), col, lw)
-	draw_line(Vector2(lean - 14 + step * 4, hy + h * 0.26), Vector2(lean - 8  + step * 2, hy + h * 0.48), col, lw)
-	draw_line(Vector2(lean, hy), Vector2(lean + 8,            hy + h * 0.22), col, lw)
-	draw_line(Vector2(lean + 8,            hy + h * 0.22), Vector2(lean + 16, hy + h * 0.42), col, lw)
+	draw_line(_sq(Vector2(lean, hy), sx, sy), _sq(Vector2(lean - 14 + step * 4, hy + h * 0.26), sx, sy), col, lw)
+	draw_line(_sq(Vector2(lean - 14 + step * 4, hy + h * 0.26), sx, sy), _sq(Vector2(lean - 8  + step * 2, hy + h * 0.48), sx, sy), col, lw)
+	draw_line(_sq(Vector2(lean, hy), sx, sy), _sq(Vector2(lean + 8, hy + h * 0.22), sx, sy), col, lw)
+	draw_line(_sq(Vector2(lean + 8, hy + h * 0.22), sx, sy), _sq(Vector2(lean + 16, hy + h * 0.42), sx, sy), col, lw)

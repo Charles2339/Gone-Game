@@ -8,23 +8,20 @@ var anim_t    : float = 0.0
 var collected : bool  = false
 var fly_t     : float = -1.0
 
-# Bigger, more visible coin
 const RADIUS : float = 16.0
 const SIDES  : int   = 6
 
-# Bobbing
+# Bobbing — base_y is set the first time _process runs,
+# AFTER the spawner has placed coin.position
 const BOB_AMP  : float = 5.0
 const BOB_FREQ : float = 3.2
-var base_y     : float = 0.0
 var bob_phase  : float = 0.0
+var base_y     : float = -99999.0   # sentinel — unset
 
 func setup(p_speed: float):
 	speed     = p_speed
 	bob_phase = randf() * TAU
-	base_y    = 0.0  # set after position placed by spawner
-
-func _ready():
-	base_y = position.y
+	base_y    = -99999.0   # will be latched in first _process frame
 
 func _process(delta):
 	anim_t += delta
@@ -38,8 +35,11 @@ func _process(delta):
 		update()
 		return
 
+	# Latch base_y once position has been placed by the spawner
+	if base_y < -9000.0:
+		base_y = position.y
+
 	position.x -= speed * delta
-	# Bob up and down
 	position.y  = base_y + sin(anim_t * BOB_FREQ + bob_phase) * BOB_AMP
 	if position.x < -260:
 		queue_free()
@@ -89,10 +89,6 @@ func _draw():
 		var angle = spin + float(i) / float(SIDES) * TAU - PI * 0.5
 		ipts.append(Vector2(cos(angle) * RADIUS * 0.50, sin(angle) * RADIUS * 0.50))
 	draw_colored_polygon(ipts, lc)
-
-	# "G" letter hint in centre
-	var letter_col = Color(0.85, 0.60, 0.02, pulse * 0.72)
-	draw_arc(Vector2.ZERO, RADIUS * 0.30, PI * 0.2, PI * 1.85, 10, letter_col, 1.5)
 
 	# Sparkle dots at tips
 	for i in range(SIDES):
