@@ -16,105 +16,107 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Discover container environment
+      - name: Discover environment
+        shell: bash
         run: |
-          echo "HOME=$HOME"
-          echo "USER=$(whoami)"
-          godot3 --version 2>/dev/null || godot --version 2>/dev/null || echo "godot not found in PATH"
-          find /usr/local/bin /usr/bin -name "godot*" 2>/dev/null
-          find / -maxdepth 6 -name "android_debug.apk" 2>/dev/null | head -5
-          echo "--- /root ---"
-          ls /root/ 2>/dev/null || true
-          echo "--- /usr/local/lib ---"
-          ls /usr/local/lib/ 2>/dev/null | head -20 || true
+          echo "HOME=$HOME USER=$(whoami)"
+          godot3 --version 2>/dev/null || godot --version 2>/dev/null || echo "no godot in PATH"
+          find /usr /opt /root -maxdepth 6 -name "android_debug.apk" 2>/dev/null | head -5
+          find /usr /opt /root -maxdepth 6 -name "adb" 2>/dev/null | head -3
 
-      - name: Setup export templates
+      - name: Install templates
+        shell: bash
         run: |
           TDIR="$HOME/.local/share/godot/templates/3.6.stable"
           mkdir -p "$TDIR"
           SRC=$(find / -maxdepth 8 -name "android_debug.apk" 2>/dev/null | head -1)
           if [ -n "$SRC" ]; then
-            cp "$(dirname $SRC)"/* "$TDIR/" 2>/dev/null || true
-            echo "Copied from $SRC"
+            cp "$(dirname "$SRC")"/* "$TDIR/" 2>/dev/null || true
+            echo "Templates copied from $(dirname "$SRC")"
           else
-            echo "Downloading templates..."
             wget -q https://github.com/godotengine/godot/releases/download/3.6-stable/Godot_v3.6-stable_export_templates.tpz -O /tmp/t.tpz
             unzip -q /tmp/t.tpz -d /tmp/t
             cp /tmp/t/templates/* "$TDIR/"
+            echo "Templates downloaded"
           fi
           ls "$TDIR"
 
-      - name: Setup keystore and editor settings
+      - name: Write editor settings
+        shell: bash
         run: |
           mkdir -p "$HOME/.config/godot"
-          keytool -genkeypair -noprompt \
-            -keystore /tmp/debug.keystore \
-            -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Debug,O=Android,C=US" 2>/dev/null
-          SDK=$(find / -maxdepth 8 -name "adb" 2>/dev/null | head -1 | xargs dirname | xargs dirname 2>/dev/null || echo "/usr/lib/android-sdk")
-          echo "SDK=$SDK"
-          printf '[gd_resource type="EditorSettings" format=2]\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/debug_keystore = "/tmp/debug.keystore"\nexport/android/debug_keystore_user = "androiddebugkey"\nexport/android/debug_keystore_pass = "android"\n' "$SDK" > "$HOME/.config/godot/editor_settings-3.tres"
+          SDK=$(find / -maxdepth 8 -name "adb" 2>/dev/null | head -1 | xargs dirname | xargs dirname 2>/dev/null)
+          SDK="${SDK:-/usr/lib/android-sdk}"
+          echo "Using SDK: $SDK"
+          keytool -genkeypair -noprompt -keystore /tmp/dk.jks -storepass android -alias debug -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Debug,O=Android,C=US" 2>/dev/null || true
+          {
+            echo '[gd_resource type="EditorSettings" format=2]'
+            echo '[resource]'
+            printf 'export/android/android_sdk_path = "%s"\n' "$SDK"
+            echo 'export/android/debug_keystore = "/tmp/dk.jks"'
+            echo 'export/android/debug_keystore_user = "debug"'
+            echo 'export/android/debug_keystore_pass = "android"'
+          } > "$HOME/.config/godot/editor_settings-3.tres"
           cat "$HOME/.config/godot/editor_settings-3.tres"
 
       - name: Write export presets
+        shell: bash
         run: |
           mkdir -p builds
-          cat > export_presets.cfg << 'EOF'
-[preset.0]
-name="Android"
-platform="Android"
-runnable=true
-custom_features=""
-export_filter="all_resources"
-include_filter=""
-exclude_filter=""
-export_path="builds/Gone.apk"
-script_export_mode=1
-script_encryption_key=""
-
-[preset.0.options]
-custom_template/debug=""
-custom_template/release=""
-custom_template/use_custom_build=false
-architectures/armeabi-v7a=true
-architectures/arm64-v8a=true
-keystore/debug="/tmp/debug.keystore"
-keystore/debug_user="androiddebugkey"
-keystore/debug_password="android"
-keystore/release=""
-keystore/release_user=""
-keystore/release_password=""
-version/code=1
-version/name="1.0"
-package/unique_name="com.gone.game"
-package/name="Gone"
-package/signed=true
-package/classify_as_game=true
-screen/immersive_mode=true
-screen/support_small=true
-screen/support_normal=true
-screen/support_large=true
-screen/support_xlarge=true
-screen/keep_screen_on=true
-EOF
+          {
+            echo '[preset.0]'
+            echo 'name="Android"'
+            echo 'platform="Android"'
+            echo 'runnable=true'
+            echo 'custom_features=""'
+            echo 'export_filter="all_resources"'
+            echo 'include_filter=""'
+            echo 'exclude_filter=""'
+            echo 'export_path="builds/Gone.apk"'
+            echo 'script_export_mode=1'
+            echo 'script_encryption_key=""'
+            echo ''
+            echo '[preset.0.options]'
+            echo 'custom_template/debug=""'
+            echo 'custom_template/release=""'
+            echo 'custom_template/use_custom_build=false'
+            echo 'architectures/armeabi-v7a=true'
+            echo 'architectures/arm64-v8a=true'
+            echo 'keystore/debug="/tmp/dk.jks"'
+            echo 'keystore/debug_user="debug"'
+            echo 'keystore/debug_password="android"'
+            echo 'keystore/release=""'
+            echo 'keystore/release_user=""'
+            echo 'keystore/release_password=""'
+            echo 'version/code=1'
+            echo 'version/name="1.0"'
+            echo 'package/unique_name="com.gone.game"'
+            echo 'package/name="Gone"'
+            echo 'package/signed=true'
+            echo 'package/classify_as_game=true'
+            echo 'screen/immersive_mode=true'
+            echo 'screen/support_small=true'
+            echo 'screen/support_normal=true'
+            echo 'screen/support_large=true'
+            echo 'screen/support_xlarge=true'
+            echo 'screen/keep_screen_on=true'
+          } > export_presets.cfg
 
       - name: Export APK
+        shell: bash
         run: |
-          GODOT=$(which godot3 2>/dev/null || which godot 2>/dev/null)
-          echo "Godot binary: $GODOT"
-          $GODOT --export "Android" "$(pwd)/builds/Gone.apk" --no-window 2>&1 || true
-          echo "Exit: $?"
+          GODOT=$(command -v godot3 2>/dev/null || command -v godot 2>/dev/null)
+          echo "Godot: $GODOT"
+          "$GODOT" --export "Android" "$(pwd)/builds/Gone.apk" --no-window 2>&1 || true
 
       - name: Verify APK
+        shell: bash
         run: |
           if [ -f builds/Gone.apk ]; then
-            echo "APK built successfully!"
+            echo "SUCCESS"
             ls -lh builds/Gone.apk
           else
-            echo "APK not found. Template dir:"
+            echo "MISSING. Template dir:"
             ls "$HOME/.local/share/godot/templates/3.6.stable/" 2>/dev/null || true
             exit 1
           fi
