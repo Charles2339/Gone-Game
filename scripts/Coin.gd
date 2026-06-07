@@ -8,26 +8,40 @@ var anim_t    : float = 0.0
 var collected : bool  = false
 var fly_t     : float = -1.0
 
-const RADIUS : float = 20.0
+# Bigger, more visible coin
+const RADIUS : float = 16.0
 const SIDES  : int   = 6
 
+# Bobbing
+const BOB_AMP  : float = 5.0
+const BOB_FREQ : float = 3.2
+var base_y     : float = 0.0
+var bob_phase  : float = 0.0
+
 func setup(p_speed: float):
-	speed = p_speed
+	speed     = p_speed
+	bob_phase = randf() * TAU
+	base_y    = 0.0  # set after position placed by spawner
+
+func _ready():
+	base_y = position.y
 
 func _process(delta):
 	anim_t += delta
 
 	if fly_t >= 0.0:
-		fly_t += delta
-		position.y -= 130.0 * delta
-		modulate.a  = max(0.0, 1.0 - fly_t * 3.5)
-		if fly_t > 0.38:
+		fly_t      += delta
+		position.y -= 160.0 * delta
+		modulate.a  = max(0.0, 1.0 - fly_t * 3.2)
+		if fly_t > 0.40:
 			queue_free()
 		update()
 		return
 
 	position.x -= speed * delta
-	if position.x < -220:
+	# Bob up and down
+	position.y  = base_y + sin(anim_t * BOB_FREQ + bob_phase) * BOB_AMP
+	if position.x < -260:
 		queue_free()
 	update()
 
@@ -35,24 +49,24 @@ func _on_Coin_body_entered(body):
 	if collected: return
 	if body is Player:
 		collected = true
-		fly_t = 0.0
+		fly_t     = 0.0
 		$CollisionShape2D.set_deferred("disabled", true)
 		emit_signal("coin_collected")
 
 func _draw():
-	var pulse = 0.70 + 0.30 * sin(anim_t * 6.5)
-	var spin  = anim_t * 3.8
+	var pulse = 0.72 + 0.28 * sin(anim_t * 7.0)
+	var spin  = anim_t * 3.6
 
 	var c  = Color(1.00, 0.88, 0.12, pulse)
-	var gc = Color(1.00, 0.88, 0.12, pulse * 0.22)
-	var lc = Color(1.00, 1.00, 0.72, pulse * 0.88)
-	var rc = Color(1.00, 0.70, 0.05, pulse * 0.75)
+	var gc = Color(1.00, 0.88, 0.12, pulse * 0.18)
+	var lc = Color(1.00, 1.00, 0.75, pulse * 0.90)
+	var rc = Color(1.00, 0.68, 0.05, pulse * 0.80)
 
-	# Outer glow rings
-	draw_circle(Vector2.ZERO, RADIUS + 10, Color(gc.r, gc.g, gc.b, gc.a * 0.45))
-	draw_circle(Vector2.ZERO, RADIUS + 5,  gc)
+	# Outer soft glow
+	draw_circle(Vector2.ZERO, RADIUS + 14, Color(gc.r, gc.g, gc.b, gc.a * 0.35))
+	draw_circle(Vector2.ZERO, RADIUS + 7,  Color(gc.r, gc.g, gc.b, gc.a * 0.65))
 
-	# Body — hexagon
+	# Coin body (hexagon)
 	var pts = PoolVector2Array()
 	for i in range(SIDES):
 		var angle = spin + float(i) / float(SIDES) * TAU - PI * 0.5
@@ -61,26 +75,28 @@ func _draw():
 
 	# Rim shading
 	for i in range(SIDES):
-		var a1 = spin + float(i)     / float(SIDES) * TAU - PI * 0.5
-		var a2 = spin + float(i + 1) / float(SIDES) * TAU - PI * 0.5
+		var a1    = spin + float(i)     / float(SIDES) * TAU - PI * 0.5
+		var a2    = spin + float(i + 1) / float(SIDES) * TAU - PI * 0.5
 		var shade = 0.5 + 0.5 * cos(a1 + PI * 0.25)
 		draw_line(
 			Vector2(cos(a1) * RADIUS, sin(a1) * RADIUS),
 			Vector2(cos(a2) * RADIUS, sin(a2) * RADIUS),
-			Color(rc.r + shade * 0.25, rc.g + shade * 0.15, rc.b, pulse),
-			2.2
-		)
+			Color(rc.r + shade * 0.25, rc.g + shade * 0.15, rc.b, pulse), 2.5)
 
-	# Inner highlight hexagon
+	# Inner highlight
 	var ipts = PoolVector2Array()
 	for i in range(SIDES):
 		var angle = spin + float(i) / float(SIDES) * TAU - PI * 0.5
-		ipts.append(Vector2(cos(angle) * RADIUS * 0.52, sin(angle) * RADIUS * 0.52))
+		ipts.append(Vector2(cos(angle) * RADIUS * 0.50, sin(angle) * RADIUS * 0.50))
 	draw_colored_polygon(ipts, lc)
 
-	# Sparkle dots at corners (rotating)
+	# "G" letter hint in centre
+	var letter_col = Color(0.85, 0.60, 0.02, pulse * 0.72)
+	draw_arc(Vector2.ZERO, RADIUS * 0.30, PI * 0.2, PI * 1.85, 10, letter_col, 1.5)
+
+	# Sparkle dots at tips
 	for i in range(SIDES):
 		var angle = spin + float(i) / float(SIDES) * TAU - PI * 0.5
-		var spos  = Vector2(cos(angle) * (RADIUS + 7), sin(angle) * (RADIUS + 7))
-		var sa    = 0.4 + 0.6 * abs(sin(anim_t * 5.0 + float(i)))
-		draw_circle(spos, 2.0, Color(1, 1, 0.8, sa * pulse))
+		var spos  = Vector2(cos(angle) * (RADIUS + 8), sin(angle) * (RADIUS + 8))
+		var sa    = 0.35 + 0.65 * abs(sin(anim_t * 5.5 + float(i)))
+		draw_circle(spos, 2.2, Color(1.0, 1.0, 0.85, sa * pulse))

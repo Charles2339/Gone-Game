@@ -56,90 +56,116 @@ anchor_bottom = 1.0
 [node name="BgRect" type="ColorRect" parent="UI/MenuScreen"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color( 0.01, 0.01, 0.07, 0.80 )
+color = Color( 0.01, 0.01, 0.08, 0.88 )
+
+[node name="TitleGlowRect" type="ColorRect" parent="UI/MenuScreen"]
+anchor_left = 0.5
+anchor_top = 0.28
+anchor_right = 0.5
+anchor_bottom = 0.28
+margin_left = -320.0
+margin_top = -110.0
+margin_right = 320.0
+margin_bottom = 110.0
+color = Color( 0.10, 0.30, 0.80, 0.06 )
 
 [node name="TitleLabel" type="Label" parent="UI/MenuScreen"]
 anchor_left = 0.5
-anchor_top = 0.20
+anchor_top = 0.28
 anchor_right = 0.5
-anchor_bottom = 0.20
-margin_left = -260.0
-margin_top = -70.0
-margin_right = 260.0
-margin_bottom = 70.0
+anchor_bottom = 0.28
+margin_left = -300.0
+margin_top = -90.0
+margin_right = 300.0
+margin_bottom = 90.0
 text = "GONE"
 align = 1
 valign = 1
-custom_colors/font_color = Color( 0.40, 0.82, 1.0, 1.0 )
-custom_colors/font_color_shadow = Color( 0.10, 0.42, 1.0, 0.95 )
-custom_constants/shadow_offset_x = 4
-custom_constants/shadow_offset_y = 4
+custom_colors/font_color = Color( 0.42, 0.82, 1.0, 1.0 )
+custom_colors/font_color_shadow = Color( 0.08, 0.38, 1.0, 0.95 )
+custom_constants/shadow_offset_x = 5
+custom_constants/shadow_offset_y = 5
 
 [node name="TaglineLabel" type="Label" parent="UI/MenuScreen"]
 anchor_left = 0.5
-anchor_top = 0.40
+anchor_top = 0.46
 anchor_right = 0.5
-anchor_bottom = 0.40
-margin_left = -180.0
-margin_top = -18.0
-margin_right = 180.0
-margin_bottom = 18.0
+anchor_bottom = 0.46
+margin_left = -200.0
+margin_top = -20.0
+margin_right = 200.0
+margin_bottom = 20.0
 text = "neon endless runner"
 align = 1
-custom_colors/font_color = Color( 0.48, 0.68, 1.0, 0.58 )
-
-[node name="PlayBtnBg" type="ColorRect" parent="UI/MenuScreen"]
-anchor_left = 0.5
-anchor_top = 0.55
-anchor_right = 0.5
-anchor_bottom = 0.55
-margin_left = -120.0
-margin_top = -30.0
-margin_right = 120.0
-margin_bottom = 30.0
-color = Color( 0.12, 0.38, 0.90, 0.92 )
+custom_colors/font_color = Color( 0.48, 0.68, 1.0, 0.50 )
 
 [node name="PlayBtnBorder" type="ColorRect" parent="UI/MenuScreen"]
 anchor_left = 0.5
-anchor_top = 0.55
+anchor_top = 0.60
 anchor_right = 0.5
-anchor_bottom = 0.55
-margin_left = -122.0
-margin_top = -32.0
-margin_right = 122.0
-margin_bottom = 32.0
-color = Color( 0.40, 0.80, 1.0, 0.80 )
-z_index = -1
+anchor_bottom = 0.60
+margin_left = -138.0
+margin_top = -40.0
+margin_right = 138.0
+margin_bottom = 40.0
+color = Color( 0.38, 0.78, 1.0, 0.85 )
+z_index = 0
+
+[node name="PlayBtn" type="ColorRect" parent="UI/MenuScreen"]
+anchor_left = 0.5
+anchor_top = 0.60
+anchor_right = 0.5
+anchor_bottom = 0.60
+margin_left = -135.0
+margin_top = -37.0
+margin_right = 135.0
+margin_bottom = 37.0
+color = Color( 0.08, 0.22, 0.72, 0.96 )
+z_index = 1
 
 [node name="PlayBtnLabel" type="Label" parent="UI/MenuScreen"]
 anchor_left = 0.5
-anchor_top = 0.55
+anchor_top = 0.60
 anchor_right = 0.5
-anchor_bottom = 0.55
-margin_left = -120.0
-margin_top = -30.0
-margin_right = 120.0
-margin_bottom = 30.0
-text = "TAP TO PLAY"
+anchor_bottom = 0.60
+margin_left = -135.0
+margin_top = -37.0
+margin_right = 135.0
+margin_bottom = 37.0
+text = "PLAY"
 align = 1
 valign = 1
 custom_colors/font_color = Color( 1.0, 1.0, 1.0, 1.0 )
-custom_colors/font_color_shadow = Color( 0.0, 0.0, 0.0, 0.60 )
+custom_colors/font_color_shadow = Color( 0.0, 0.0, 0.0, 0.55 )
 custom_constants/shadow_offset_x = 2
 custom_constants/shadow_offset_y = 2
+z_index = 2
 
 [node name="ControlsLabel" type="Label" parent="UI/MenuScreen"]
 anchor_left = 0.5
-anchor_top = 0.74
+anchor_top = 0.78
 anchor_right = 0.5
-anchor_bottom = 0.74
-margin_left = -220.0
-margin_top = -18.0
-margin_right = 220.0
-margin_bottom = 18.0
-text = "space / tap = jump  •  swipe down = slide  •  double jump available"
+anchor_bottom = 0.78
+margin_left = -240.0
+margin_top = -20.0
+margin_right = 240.0
+margin_bottom = 20.0
+text = "tap / space = jump   •   swipe down = slide   •   double jump"
 align = 1
-custom_colors/font_color = Color( 0.48, 0.65, 0.90, 0.50 )
+custom_colors/font_color = Color( 0.45, 0.65, 0.92, 0.45 )
+
+[node name="BestScoreLabel" type="Label" parent="UI/MenuScreen"]
+anchor_left = 0.5
+anchor_top = 0.87
+anchor_right = 0.5
+anchor_bottom = 0.87
+margin_left = -160.0
+margin_top = -18.0
+margin_right = 160.0
+margin_bottom = 18.0
+text = ""
+align = 1
+custom_colors/font_color = Color( 0.55, 0.80, 1.0, 0.60 )
 
 [node name="HUDScreen" type="Control" parent="UI"]
 visible = false
@@ -149,10 +175,10 @@ anchor_bottom = 1.0
 [node name="ScoreLabel" type="Label" parent="UI/HUDScreen"]
 anchor_left = 0.5
 anchor_right = 0.5
-margin_left = -130.0
-margin_top = 16.0
-margin_right = 130.0
-margin_bottom = 58.0
+margin_left = -140.0
+margin_top = 14.0
+margin_right = 140.0
+margin_bottom = 60.0
 text = "0"
 align = 1
 custom_colors/font_color = Color( 0.90, 0.96, 1.0, 1.0 )
@@ -162,13 +188,13 @@ custom_constants/shadow_offset_y = 2
 
 [node name="CoinsLabel" type="Label" parent="UI/HUDScreen"]
 anchor_right = 1.0
-margin_top = 16.0
-margin_right = -18.0
-margin_bottom = 52.0
+margin_top = 14.0
+margin_right = -20.0
+margin_bottom = 54.0
 text = "◆  0"
 align = 2
 custom_colors/font_color = Color( 1.0, 0.88, 0.14, 1.0 )
-custom_colors/font_color_shadow = Color( 0.6, 0.4, 0.0, 0.70 )
+custom_colors/font_color_shadow = Color( 0.60, 0.40, 0.00, 0.70 )
 custom_constants/shadow_offset_x = 2
 custom_constants/shadow_offset_y = 2
 
@@ -180,57 +206,57 @@ anchor_bottom = 1.0
 [node name="BgRect" type="ColorRect" parent="UI/GameOverScreen"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color( 0.01, 0.01, 0.06, 0.90 )
+color = Color( 0.01, 0.01, 0.06, 0.92 )
 
 [node name="TitleLabel" type="Label" parent="UI/GameOverScreen"]
 anchor_left = 0.5
-anchor_top = 0.18
+anchor_top = 0.16
 anchor_right = 0.5
-anchor_bottom = 0.18
-margin_left = -200.0
-margin_top = -46.0
-margin_right = 200.0
-margin_bottom = 46.0
+anchor_bottom = 0.16
+margin_left = -220.0
+margin_top = -50.0
+margin_right = 220.0
+margin_bottom = 50.0
 text = "YOU'RE GONE"
 align = 1
-custom_colors/font_color = Color( 1.0, 0.30, 0.30, 1.0 )
-custom_colors/font_color_shadow = Color( 0.6, 0.0, 0.0, 0.80 )
-custom_constants/shadow_offset_x = 3
-custom_constants/shadow_offset_y = 3
+custom_colors/font_color = Color( 1.0, 0.28, 0.28, 1.0 )
+custom_colors/font_color_shadow = Color( 0.65, 0.0, 0.0, 0.85 )
+custom_constants/shadow_offset_x = 4
+custom_constants/shadow_offset_y = 4
 
 [node name="DividerRect" type="ColorRect" parent="UI/GameOverScreen"]
 anchor_left = 0.5
-anchor_top = 0.34
+anchor_top = 0.33
 anchor_right = 0.5
-anchor_bottom = 0.34
-margin_left = -140.0
+anchor_bottom = 0.33
+margin_left = -150.0
 margin_top = -1.0
-margin_right = 140.0
+margin_right = 150.0
 margin_bottom = 1.0
-color = Color( 0.30, 0.55, 1.0, 0.40 )
+color = Color( 0.28, 0.55, 1.0, 0.38 )
 
 [node name="ScoreLabel" type="Label" parent="UI/GameOverScreen"]
 anchor_left = 0.5
-anchor_top = 0.41
+anchor_top = 0.40
 anchor_right = 0.5
-anchor_bottom = 0.41
-margin_left = -160.0
-margin_top = -24.0
-margin_right = 160.0
-margin_bottom = 24.0
+anchor_bottom = 0.40
+margin_left = -170.0
+margin_top = -26.0
+margin_right = 170.0
+margin_bottom = 26.0
 text = "Score   0"
 align = 1
 custom_colors/font_color = Color( 0.90, 0.96, 1.0, 1.0 )
 
 [node name="CoinsLabel" type="Label" parent="UI/GameOverScreen"]
 anchor_left = 0.5
-anchor_top = 0.51
+anchor_top = 0.50
 anchor_right = 0.5
-anchor_bottom = 0.51
-margin_left = -160.0
-margin_top = -22.0
-margin_right = 160.0
-margin_bottom = 22.0
+anchor_bottom = 0.50
+margin_left = -170.0
+margin_top = -24.0
+margin_right = 170.0
+margin_bottom = 24.0
 text = "Coins   0"
 align = 1
 custom_colors/font_color = Color( 1.0, 0.88, 0.14, 1.0 )
@@ -240,13 +266,13 @@ anchor_left = 0.5
 anchor_top = 0.60
 anchor_right = 0.5
 anchor_bottom = 0.60
-margin_left = -160.0
-margin_top = -20.0
-margin_right = 160.0
-margin_bottom = 20.0
+margin_left = -170.0
+margin_top = -22.0
+margin_right = 170.0
+margin_bottom = 22.0
 text = "Best    0"
 align = 1
-custom_colors/font_color = Color( 0.58, 0.80, 1.0, 0.80 )
+custom_colors/font_color = Color( 0.55, 0.80, 1.0, 0.80 )
 
 [node name="NewBestLabel" type="Label" parent="UI/GameOverScreen"]
 visible = false
@@ -254,10 +280,10 @@ anchor_left = 0.5
 anchor_top = 0.69
 anchor_right = 0.5
 anchor_bottom = 0.69
-margin_left = -130.0
-margin_top = -20.0
-margin_right = 130.0
-margin_bottom = 20.0
+margin_left = -140.0
+margin_top = -22.0
+margin_right = 140.0
+margin_bottom = 22.0
 text = "✦  NEW BEST  ✦"
 align = 1
 custom_colors/font_color = Color( 1.0, 0.88, 0.12, 1.0 )
@@ -267,10 +293,10 @@ anchor_left = 0.5
 anchor_top = 0.83
 anchor_right = 0.5
 anchor_bottom = 0.83
-margin_left = -160.0
-margin_top = -22.0
-margin_right = 160.0
-margin_bottom = 22.0
+margin_left = -170.0
+margin_top = -24.0
+margin_right = 170.0
+margin_bottom = 24.0
 text = "tap to run again"
 align = 1
-custom_colors/font_color = Color( 0.58, 0.78, 1.0, 0.65 )
+custom_colors/font_color = Color( 0.55, 0.78, 1.0, 0.60 )
